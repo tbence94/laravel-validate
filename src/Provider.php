@@ -2,7 +2,8 @@
 
 namespace TBence\Validate;
 
-use DB;
+use Illuminate\Database\SQLiteConnection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 
 class Provider extends ServiceProvider
@@ -14,10 +15,16 @@ class Provider extends ServiceProvider
      */
     public function boot()
     {
-        $this->mergeConfigFrom(__DIR__ . '/config.php', 'validate');
+        $this->publishes([
+            __DIR__ . '/config.php' => config_path('validate.php'),
+        ]);
 
-        if (DB::connection() instanceof \Illuminate\Database\SQLiteConnection) {
-            if(!app()->runningInConsole() || !str_contains($_SERVER['argv'][1], 'migrate')){
+        if(!file_exists(config_path('validate.php'))){
+            $this->mergeConfigFrom(__DIR__ . '/config.php', 'validate');
+        }
+
+        if (DB::connection() instanceof SQLiteConnection) {
+            if (!app()->runningInConsole() || !str_contains($_SERVER['argv'][1], 'migrate')) {
                 DB::statement(DB::raw('PRAGMA foreign_keys = ON'));
             }
         }

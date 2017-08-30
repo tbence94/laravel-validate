@@ -2,8 +2,6 @@
 
 namespace TBence\Validate;
 
-use Cache;
-use DB;
 use Doctrine\DBAL\Schema\Column;
 use Doctrine\DBAL\Schema\ForeignKeyConstraint;
 use Doctrine\DBAL\Schema\Index;
@@ -16,13 +14,13 @@ use Doctrine\DBAL\Types\IntegerType;
 use Doctrine\DBAL\Types\SmallIntType;
 use Doctrine\DBAL\Types\StringType;
 use Doctrine\DBAL\Types\TextType;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
-use Validator;
 
 trait AutoValidation
 {
-
-    private $manager;
 
     private $rules = [];
 
@@ -55,15 +53,15 @@ trait AutoValidation
         }
 
         $table    = $this->getTable();
-        $cacheKey = 'autovalidation.' . $table;
+        $cacheKey = 'validate.' . $table;
 
         if (config('validate.cache') && Cache::has($cacheKey)) {
             return Cache::get($cacheKey);
         }
 
-        $this->manager = DB::connection()->getDoctrineSchemaManager();
+        $manager = DB::connection()->getDoctrineSchemaManager();
 
-        $details = $this->manager->listTableDetails($table);
+        $details = $manager->listTableDetails($table);
 
         foreach ($details->getColumns() as $column) {
             $this->setColumnValidationString($column);
@@ -73,7 +71,7 @@ trait AutoValidation
             $this->setIndexValidation($index);
         }
 
-        $foreignKeys = $this->manager->listTableForeignKeys($table);
+        $foreignKeys = $manager->listTableForeignKeys($table);
         foreach ($foreignKeys as $foreignKey) {
             $this->setForeignKeyValidation($foreignKey);
         }
