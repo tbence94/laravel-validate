@@ -1,0 +1,26 @@
+{
+    "name": "tbence/validate",
+    "description": "Automatic validation for models",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Bence Tihanyi",
+            "email": "tihanyibence@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {
+            "TBence\\Validate\\": "src/"
+        }
+    },
+    "require": {
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "TBence\\Validate\\Provider"
+            ]
+        }
+    }
+}
