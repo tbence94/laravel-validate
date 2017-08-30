@@ -1,4 +1,4 @@
-#Validate
+# Validate
 
 Adds an AutoValidation trait to your project.
 If you use that trait on your models, it will automatically vaildate it by your DB scheme.
