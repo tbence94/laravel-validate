@@ -14,7 +14,7 @@ class Provider extends ServiceProvider
      */
     public function boot()
     {
-        $this->mergeConfigFrom(__DIR__.'/config.php', 'validate');
+        $this->mergeConfigFrom(__DIR__ . '/config.php', 'validate');
 
         if (DB::connection() instanceof \Illuminate\Database\SQLiteConnection) {
             if(!app()->runningInConsole() || !str_contains($_SERVER['argv'][1], 'migrate')){
