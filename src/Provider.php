@@ -17,7 +17,7 @@ class Provider extends ServiceProvider
     {
         $this->publishes([
             __DIR__ . '/config.php' => config_path('validate.php'),
-        ]);
+        ], 'config');
 
         if(!file_exists(config_path('validate.php'))){
             $this->mergeConfigFrom(__DIR__ . '/config.php', 'validate');

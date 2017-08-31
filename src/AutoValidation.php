@@ -5,6 +5,7 @@ namespace TBence\Validate;
 use Doctrine\DBAL\Schema\Column;
 use Doctrine\DBAL\Schema\ForeignKeyConstraint;
 use Doctrine\DBAL\Schema\Index;
+use Doctrine\DBAL\Schema\Table;
 use Doctrine\DBAL\Types\BigIntType;
 use Doctrine\DBAL\Types\DateTimeType;
 use Doctrine\DBAL\Types\DateTimeTzType;
@@ -22,15 +23,30 @@ use Illuminate\Validation\ValidationException;
 trait AutoValidation
 {
 
+    /**
+     * Stores laravel validation rules for model
+     *
+     * @var array
+     */
     private $rules = [];
 
+    /**
+     * Register the saving event listener for the model validation
+     */
     public static function bootAutoValidation()
     {
-        static::saving(function ($model) {
+        static::saving(function (Validates $model) {
             return $model->validate();
         });
     }
 
+    /**
+     * Validate the model.
+     * ValidationExceptions are handled automatically by laravel.
+     *
+     * @return bool
+     * @throws ValidationException
+     */
     public function validate()
     {
         $validator = Validator::make($this->getAttributes(), $this->getValidationRules());
@@ -46,6 +62,14 @@ trait AutoValidation
         return true;
     }
 
+    /**
+     * Get validation rules for model.
+     * If there is a rules method on the model call that.
+     * If there is a cached object for this model return with that.
+     * Else generate and cache model validation rules.
+     *
+     * @return array|mixed
+     */
     public function getValidationRules()
     {
         if (method_exists($this, 'rules')) {
@@ -59,22 +83,12 @@ trait AutoValidation
             return Cache::get($cacheKey);
         }
 
-        $manager = DB::connection()->getDoctrineSchemaManager();
-
-        $details = $manager->listTableDetails($table);
-
-        foreach ($details->getColumns() as $column) {
-            $this->setColumnValidationString($column);
-        }
-
-        foreach ($details->getIndexes() as $index) {
-            $this->setIndexValidation($index);
-        }
-
+        // Get table info for model and generate rules
+        $manager     = DB::connection()->getDoctrineSchemaManager();
+        $details     = $manager->listTableDetails($table);
         $foreignKeys = $manager->listTableForeignKeys($table);
-        foreach ($foreignKeys as $foreignKey) {
-            $this->setForeignKeyValidation($foreignKey);
-        }
+
+        $this->generateRules($details, $foreignKeys);
 
         if (config('validate.cache')) {
             Cache::forever($cacheKey, $this->rules);
@@ -83,14 +97,110 @@ trait AutoValidation
         return $this->rules;
     }
 
-    private function setColumnValidationString(Column $column)
+    /**
+     * Generate validation rules by DB schema
+     *
+     * @param Table $details
+     * @param array $foreignKeys
+     */
+    private function generateRules(Table $details, $foreignKeys)
     {
-        $name = $column->getName();
-
-        if ($column->getNotnull() && !$column->getAutoincrement() && !$column->getDefault()) {
-            $this->addRule($name, 'required');
+        foreach ($details->getColumns() as $column) {
+            $this->setColumnValidationString($column);
         }
 
+        foreach ($details->getIndexes() as $index) {
+            $this->setIndexValidation($index);
+        }
+
+        foreach ($foreignKeys as $foreignKey) {
+            $this->setForeignKeyValidation($foreignKey);
+        }
+    }
+
+    /**
+     * Add rules by column definitions
+     *
+     * @param Column $column
+     */
+    private function setColumnValidationString(Column $column)
+    {
+        $this->addRequiredRule($column);
+
+        $this->addTypeRule($column);
+
+        $this->addLengthRule($column);
+    }
+
+    /**
+     * Add rules by indexes
+     *
+     * @param Index $index
+     */
+    private function setIndexValidation(Index $index)
+    {
+        $columns = $index->getColumns();
+
+        if ($index->isUnique() && count($columns) === 1) {
+            $field = $columns[0];
+            $table = $this->getTable();
+
+            $this->addRule($field, "unique:$table,$field");
+        }
+    }
+
+    /**
+     * Add rules by foreign keys
+     *
+     * @param ForeignKeyConstraint $foreignKey
+     */
+    public function setForeignKeyValidation(ForeignKeyConstraint $foreignKey)
+    {
+        $localColumns   = $foreignKey->getLocalColumns();
+        $foreignColumns = $foreignKey->getForeignColumns();
+        if (count($localColumns) > 1 || count($foreignColumns) > 1) {
+            return;
+        }
+
+        $localColumn   = $localColumns[0];
+        $foreignColumn = $foreignColumns[0];
+        $foreignTable  = $foreignKey->getForeignTableName();
+
+        $this->addRule($localColumn, "exists:$foreignTable,$foreignColumn");
+    }
+
+    /**
+     * Add validation rule to column
+     *
+     * @param $column
+     * @param $rule
+     */
+    private function addRule($column, $rule)
+    {
+        if (!array_key_exists($column, $this->rules)) {
+            $this->rules[$column] = '';
+        }
+
+        $this->rules[$column] .= '|' . $rule;
+        $this->rules[$column] = trim($this->rules[$column], '|');
+    }
+
+    /**
+     * @param Column $column
+     */
+    private function addRequiredRule(Column $column)
+    {
+        if ($column->getNotnull() && !$column->getAutoincrement() && !$column->getDefault()) {
+            $this->addRule($column->getName(), 'required');
+        }
+    }
+
+    /**
+     * @param Column $column
+     */
+    private function addTypeRule(Column $column)
+    {
+        $name = $column->getName();
         $type = $column->getType();
 
         if (
@@ -111,45 +221,19 @@ trait AutoValidation
             $type instanceof DateTimeTzType
         ) {
             $this->addRule($name, 'date');
-        }
-
-    }
-
-    private function setIndexValidation(Index $index)
-    {
-        $columns = $index->getColumns();
-
-        if ($index->isUnique() && count($columns) === 1) {
-            $field = $columns[0];
-            $table = $this->getTable();
-
-            $this->addRule($field, "unique:$table,$field");
+        } else if (config('validate.dump')) {
+            dump("Unknown type", $type);
         }
     }
 
-    public function setForeignKeyValidation(ForeignKeyConstraint $foreignKey)
+    /**
+     * @param Column $column
+     */
+    public function addLengthRule(Column $column)
     {
-        $localColumns   = $foreignKey->getLocalColumns();
-        $foreignColumns = $foreignKey->getForeignColumns();
-        if (count($localColumns) > 1 || count($foreignColumns) > 1) {
-            return;
+        if ($length = $column->getLength()) {
+            $this->addRule($column->getName(), "max:$length");
         }
-
-        $localColumn   = $localColumns[0];
-        $foreignColumn = $foreignColumns[0];
-        $foreignTable  = $foreignKey->getForeignTableName();
-
-        $this->addRule($localColumn, "exists:$foreignTable,$foreignColumn");
-    }
-
-    private function addRule($column, $rule)
-    {
-        if (!array_key_exists($column, $this->rules)) {
-            $this->rules[$column] = '';
-        }
-
-        $this->rules[$column] .= '|' . $rule;
-        $this->rules[$column] = trim($this->rules[$column], '|');
     }
 
 }

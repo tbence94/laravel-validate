@@ -1,6 +1,7 @@
 {
     "name": "tbence/validate",
-    "description": "Automatic validation for models",
+    "description": "Automatic validation for laravel models.",
+    "keywords": ["validation", "laravel", "model"],
     "license": "MIT",
     "authors": [
         {
@@ -15,6 +16,10 @@
         }
     },
     "require": {
+        "php": ">=7.0",
+        "illuminate/support": "5.5.*",
+        "illuminate/validation": "5.5.*",
+        "illuminate/database": "5.5.*"
     },
     "extra": {
         "laravel": {
