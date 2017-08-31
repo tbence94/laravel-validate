@@ -19,14 +19,14 @@ class Provider extends ServiceProvider
             __DIR__ . '/config.php' => config_path('validate.php'),
         ], 'config');
 
-        if(!file_exists(config_path('validate.php'))){
+        if (!file_exists(config_path('validate.php'))) {
             $this->mergeConfigFrom(__DIR__ . '/config.php', 'validate');
         }
 
-        if (DB::connection() instanceof SQLiteConnection) {
-            if (!app()->runningInConsole() || !str_contains($_SERVER['argv'][1], 'migrate')) {
-                DB::statement(DB::raw('PRAGMA foreign_keys = ON'));
-            }
+        if (app()->runningInConsole() && str_contains($_SERVER['argv'][1], 'migrate')) {
+            AutoValidation::disableAutoValidation();
+        }else if(DB::connection() instanceof  SQLiteConnection){
+            DB::statement(DB::raw('PRAGMA foreign_keys = ON'));
         }
     }
 
