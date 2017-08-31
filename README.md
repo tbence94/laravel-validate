@@ -1,9 +1,9 @@
 # Laravel-Validate
 
 <p align="center">
-<a href="https://packagist.org/packages/laravel/scout"><img src="https://poser.pugx.org/tbence/validate/d/total.svg" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/scout"><img src="https://poser.pugx.org/tbence/validate/v/stable.svg" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/scout"><img src="https://poser.pugx.org/tbence/validate/license.svg" alt="License"></a>
+<a href="https://packagist.org/packages/tbence/validate"><img src="https://poser.pugx.org/tbence/validate/d/total.svg" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/tbence/validate"><img src="https://poser.pugx.org/tbence/validate/v/stable.svg" alt="Latest Stable Version"></a>
+<a href="https://packagist.org/packages/tbence/validate"><img src="https://poser.pugx.org/tbence/validate/license.svg" alt="License"></a>
 </p>
 
 Adds an AutoValidation trait to your project.
