@@ -15,18 +15,12 @@ class Provider extends ServiceProvider
      */
     public function boot()
     {
-        $this->publishes([
-            __DIR__ . '/config.php' => config_path('validate.php'),
-        ], 'config');
+        $this->provideConfig();
 
-        if (!file_exists(config_path('validate.php'))) {
-            $this->mergeConfigFrom(__DIR__ . '/config.php', 'validate');
-        }
-
-        if (app()->runningInConsole() && str_contains($_SERVER['argv'][1], 'migrate')) {
+        if ($this->isMigratingOrSeeding()) {
             AutoValidation::disableAutoValidation();
-        }else if(DB::connection() instanceof  SQLiteConnection){
-            DB::statement(DB::raw('PRAGMA foreign_keys = ON'));
+        } else {
+            $this->enableForeignKeys();
         }
     }
 
@@ -38,5 +32,37 @@ class Provider extends ServiceProvider
     public function register()
     {
         //
+    }
+
+    /**
+     * @return bool
+     */
+    private function isMigratingOrSeeding()
+    {
+        return app()->runningInConsole() && str_contains($_SERVER['argv'][1], ['migrate', 'db:seed']);
+    }
+
+    /**
+     * Provide configuration
+     */
+    private function provideConfig()
+    {
+        $this->publishes([
+            __DIR__ . '/config.php' => config_path('validate.php'),
+        ], 'config');
+
+        if (!file_exists(config_path('validate.php'))) {
+            $this->mergeConfigFrom(__DIR__ . '/config.php', 'validate');
+        }
+    }
+
+    /**
+     * Enable foreign keys on sqlite connections
+     */
+    private function enableForeignKeys()
+    {
+        if (DB::connection() instanceof SQLiteConnection) {
+            DB::statement(DB::raw('PRAGMA foreign_keys = ON'));
+        }
     }
 }
