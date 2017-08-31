@@ -22,6 +22,12 @@ use Illuminate\Validation\ValidationException;
 
 trait AutoValidation
 {
+    /**
+     * Is automatic validation active?
+     *
+     * @var bool
+     */
+    private static $active = true;
 
     /**
      * Stores laravel validation rules for model
@@ -36,8 +42,48 @@ trait AutoValidation
     public static function bootAutoValidation()
     {
         static::saving(function (Validates $model) {
-            return $model->validate();
+            return (self::$active) ? $model->validate() : true;
         });
+    }
+
+    /**
+     * Enable/disable automatic validation
+     *
+     * @param bool $bool
+     */
+    public static function useAutoValidation($bool = true)
+    {
+        self::$active = $bool;
+    }
+
+    /**
+     * Enable automatic validation
+     *
+     * @param bool $bool
+     */
+    public static function enableAutoValidation()
+    {
+        self::useAutoValidation();
+    }
+
+    /**
+     * Disable automatic validation
+     *
+     * @param bool $bool
+     */
+    public static function disableAutoValidation()
+    {
+        self::useAutoValidation(false);
+    }
+
+    /**
+     * Get model validation rules
+     *
+     * @return mixed
+     */
+    public static function getRules()
+    {
+        return (new static)->getValidationRules();
     }
 
     /**
@@ -53,7 +99,7 @@ trait AutoValidation
 
         if ($validator->fails()) {
             if (config('validate.dump')) {
-                dump($this->rules, $this->toArray(), $validator->errors());
+                dump($this->rules, $this->getAttributes(), $validator->errors());
             }
 
             throw new ValidationException($validator);
